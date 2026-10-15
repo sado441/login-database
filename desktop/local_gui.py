@@ -37,6 +37,8 @@ class LocalApp:
     def __init__(self, root):
         self.root = root
         self.router = self.capture = None
+        self.follow = None
+        self.use_sege = self.use_follow = False
         self.windows = []
         self.demo_windows = []
         self.demo_outputs = []
@@ -50,14 +52,16 @@ class LocalApp:
         self.test_keys = set()
         self.captured = 0
         self.mouse_var = tk.BooleanVar(value=True)
+        self.compat_var = tk.BooleanVar(value=True)
+        self.follow_var = tk.BooleanVar(value=False)
         self.filter_var = tk.StringVar(value="Knight")
         self.status = tk.StringVar(value="Durduruldu. Ana pencereyi ve iki alıcıyı seç.")
         self.diagnostics = tk.StringVar(value="Son oturum: henüz girdi yok.")
-        root.title("SADO Link | YEREL ÇOKLU PENCERE")
-        root.geometry("920x780")
+        root.title("SADO Link v4 | YEREL ÇOKLU PENCERE")
+        root.geometry("960x850")
         frame = ttk.Frame(root, padding=16)
         frame.pack(fill="both", expand=True)
-        ttk.Label(frame, text="YEREL ÇOKLU PENCERE · 1 ana + 2 alıcı", font=("Segoe UI", 17, "bold")).pack(anchor="w")
+        ttk.Label(frame, text="YEREL ÇOKLU PENCERE · SEGE uyumlu · 1 ana + 2 alıcı", font=("Segoe UI", 17, "bold")).pack(anchor="w")
         ttk.Label(frame, text="İnternet ve oturum kodu gerekmez. Sen ana pencerede oynarsın; seçilen alıcılara girdi gönderilir.", wraplength=820).pack(anchor="w", pady=8)
         row = ttk.Frame(frame)
         row.pack(fill="x", pady=5)
@@ -73,6 +77,8 @@ class LocalApp:
         self.targets.pack(fill="both", expand=True, pady=5)
         ttk.Button(frame, text="ÖNDEKİ PENCEREYİ ALICIYA EKLE (3 sn)", command=lambda: self.pick_foreground(False)).pack(anchor="w", pady=4)
         ttk.Checkbutton(frame, text="Fare hareketi, tıklamalar ve tekerleği de aktar", variable=self.mouse_var).pack(anchor="w", pady=5)
+        ttk.Checkbutton(frame, text="SEGE uyumlu klavye: ham scan code + WM_ACTIVATE (önerilen ilk deneme)", variable=self.compat_var).pack(anchor="w", pady=3)
+        ttk.Checkbutton(frame, text="SEGE fare takibi: sol tık W/X takibini açar, sağ tık kapatır (birebir fare yerine)", variable=self.follow_var).pack(anchor="w", pady=3)
         ttk.Label(frame, text="Tuşlar yalnız seçilen ANA pencere öndeyken aktarılır. Alıcıları küçültme. F12 her zaman durdurur.", wraplength=820).pack(anchor="w", pady=5)
         actions = ttk.Frame(frame)
         actions.pack(fill="x", pady=8)
@@ -81,7 +87,7 @@ class LocalApp:
         ttk.Button(actions, text="3 PENCERELİ TEST", command=self.start_demo).pack(side="right", padx=3)
         ttk.Label(frame, textvariable=self.status, wraplength=820, font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=8)
         ttk.Label(frame, textvariable=self.diagnostics, wraplength=820).pack(anchor="w", pady=4)
-        ttk.Label(frame, text="Arka plan girdileri Windows pencere mesajlarıyla gönderilir. Oyunun bunları kabul etmesi ayrıca denenmelidir. Kamera / hedefleme iki karakterde aynı sonucu vermeyebilir.", wraplength=820).pack(anchor="w")
+        ttk.Label(frame, text="SEGE uyumlu mod, kaynak multi.py gibi her tuştan önce WM_ACTIVATE gönderir; pencereyi öne getirmez. Oyunun mesajları kabul etmesi ayrıca denenmelidir.", wraplength=820).pack(anchor="w")
         root.bind_all("<F12>", lambda e: self.stop())
         root.protocol("WM_DELETE_WINDOW", self.close)
         self.tick_timer = root.after(20, self.tick)
@@ -127,8 +133,13 @@ class LocalApp:
                 raise ValueError("En az bir alıcı seç; üç karakter için iki alıcı seçmelisin.")
             if not messagebox.askyesno("Yerel aktarım", f"Ana: {source.label}\n\n{len(targets)} seçili alıcıya tuş/fare gönderilecek. F12 durdurur. Başlatılsın mı?"):
                 return
-            self.router = LocalRouter(source, {w: BackgroundOutput(w) for w in targets}, lambda: foreground(source), valid)
+            self.use_sege = self.compat_var.get()
+            self.use_follow = self.follow_var.get()
+            self.router = LocalRouter(source, {w: BackgroundOutput(w, sege_compatible=self.use_sege) for w in targets}, lambda: foreground(source), valid)
             self.router.start()
+            if self.use_follow:
+                from sege_compat import FollowControl
+                self.follow = FollowControl(self.router.route)
             self.captured = 0
             self.halt.clear()
             generation = self.generation
@@ -137,7 +148,7 @@ class LocalApp:
             def emit(event):
                 if generation != self.generation:
                     return
-                if event["type"] != "key" and not self.forward_mouse:
+                if event["type"] != "key" and not (self.forward_mouse or (self.use_follow and event['type'] == 'button')):
                     return
                 self.captured += 1
                 try:
@@ -145,6 +156,9 @@ class LocalApp:
                 except queue.Full:
                     self.halt.set()
 
+            if self.use_sege:
+                from sege_compat import SegeCapture
+                Capture = SegeCapture
             self.capture = Capture("", emit, self.halt.set, rect_provider=lambda: rect(source, foreground_only=True))
             self.status.set("Yerel aktarım hazır. Seçtiğin ana oyun penceresine geç.")
         except Exception as exc:
@@ -184,6 +198,8 @@ class LocalApp:
         self.stop()
         self.close_demo()
         self.demo_mode = True
+        self.use_sege = False  # Demo panels don't call any native Windows API.
+        self.use_follow = self.follow_var.get()
         self.demo_outputs = []
         canvases = []
         for index, title in enumerate(("ANA — burada tuş/fare dene", "ALICI 1", "ALICI 2")):
@@ -205,6 +221,9 @@ class LocalApp:
                                   lambda: self.root.focus_get() == self.demo_source,
                                   lambda _: all(w.winfo_exists() and w.state() != "iconic" for w in self.demo_windows))
         self.router.start()
+        if self.use_follow:
+            from sege_compat import FollowControl
+            self.follow = FollowControl(self.router.route)
         self.captured = 0
         self.halt.clear()
         source = self.demo_source
@@ -226,7 +245,7 @@ class LocalApp:
         if self.demo_mode and self.router:
             if self.router.running:
                 self.captured += 1
-            self.router.route(event)
+            self.route_physical(event)
 
     def update_diagnostics(self):
         if self.router:
@@ -234,7 +253,20 @@ class LocalApp:
             last = "yok"
             if event:
                 last = f"VK {event['vk']} {'bas' if event['down'] else 'bırak'}" if event['type'] == 'key' else event['type']
-            self.diagnostics.set(f"Son oturum | Yakalanan: {self.captured} | Yönlendirilen: {self.router.total} | Alıcı: {len(self.router.outputs)} | Ana odak görüldü: {'evet' if self.router.seen_source else 'hayır'} | Son olay: {last}")
+                if 'scan_code' in event:
+                    last += f" SC {event['scan_code']:#x}"
+            mode = 'SEGE uyumlu' if self.use_sege else 'Standart'
+            self.diagnostics.set(f"Son oturum | {mode} | Yakalanan: {self.captured} | Yönlendirilen: {self.router.total} | Alıcı: {len(self.router.outputs)} | Ana odak görüldü: {'evet' if self.router.seen_source else 'hayır'} | Son olay: {last}")
+
+    def route_physical(self, event):
+        if self.follow:
+            if event['type'] == 'button':
+                self.follow.click(event['button'], event['down'])
+                return
+            if event['type'] != 'key':
+                return
+            self.follow.physical(event)
+        self.router.route(event)
 
     def demo_key(self, event, down):
         from app import tk_vk
@@ -268,13 +300,25 @@ class LocalApp:
 
     def stop(self):
         self.generation += 1
-        if self.capture:
-            self.capture.stop()
-            self.capture = None
+        cleanup_errors = []
+        follow, self.follow = self.follow, None
+        if follow:
+            try:
+                follow.stop()
+            except Exception as exc:
+                cleanup_errors.append(str(exc))
+        capture, self.capture = self.capture, None
+        if capture:
+            try:
+                capture.stop()
+            except Exception as exc:
+                cleanup_errors.append(str(exc))
         if self.router:
             self.router.stop()
             self.status.set(self.router.reason)
             self.update_diagnostics()
+        if cleanup_errors:
+            self.status.set(self.status.get() + ' | Dinleyici/takip kapatma hatası: ' + '; '.join(cleanup_errors))
         self.test_keys.clear()
         while True:
             try:
@@ -312,7 +356,9 @@ class LocalApp:
                         except queue.Empty:
                             break
                         if generation == self.generation:
-                            self.router.route(event)
+                            self.route_physical(event)
+                    if self.follow and self.router.running:
+                        self.follow.tick()
                     if not self.router.running:
                         reason = self.router.reason
                         self.stop()

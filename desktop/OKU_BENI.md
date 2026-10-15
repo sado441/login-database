@@ -1,4 +1,40 @@
-# SADO Link — sürüm 3: Interception alıcı desteği
+# SADO Link — sürüm 4: SEGE kaynağına dayalı yerel girdi
+
+## Kaynağı esas alan yerel mod güncellemesi
+
+İlk gönderilen SEGE-MACRO arşivinin `multi.py`, `multi - canli.py`,
+`background.py`, `clicksend.py` ve `interception.py` dosyaları yeniden
+karşılaştırıldı. Ayrıntılar `SOURCE_COMPARISON_TR.md` dosyasında.
+
+**İlk deneme:** ZIP'i yeni klasöre çıkar, `YEREL_COKLU_BASLAT.bat` aç.
+Başlıkta v4 görünmeli. **SEGE uyumlu klavye** işaretli, **birebir fare
+aktarımı** ve **SEGE fare takibi** kapalı kalsın. Üç pencereyi seçip
+başlat, ana oyunda tek bir beceri tuşu ve W bas/bırak dene. Programa
+döndüğünde Son oturum satırında SEGE uyumlu ve yakalanan/yönlendirilen
+olayları görmelisin. Bu modda Interception sürücüsü gerekmez.
+
+SEGE uyumlu klavye, kaynak gibi `keyboard.hook` ile ham scan code alır ve
+hedeflere **WM_ACTIVATE → WM_KEYDOWN/WM_KEYUP** gönderir. Tuş basılıyken
+gelen tekrar olayları da iletilir. Standart seçenek eski VK yolunu korur.
+
+**Kaynakta bulunan fare kontrolünü denemek için:** durdur, **SEGE fare
+takibi** kutusunu aç ve yeniden başlat. Ana oyun penceresinde sol tık,
+alıcılar için W/X takibini açar; sağ tık kapatır. X 1.5 saniyede bir
+yaklaşık 0.02 saniye basılır; W tutulup 2 saniyede yenilenir. Elle tuş
+basılıyken takip duraklar; bütün elle basılan tuşlar bırakılınca devam eder.
+Bu seçenek açıkken birebir fare konumu/tıklama aktarımı yerine bu davranış
+kullanılır. Kamera veya gerçek karakter takibi garantisi yoktur.
+
+**3 PENCERELİ TEST** yerel yönlendirmeyi simüle eder. SEGE fare takibi
+işaretliyse bu testte de sol tık W/X'i başlatır, sağ tık durdurur. Native
+WM_ACTIVATE/keyboard hook çağrıları bu simülasyonda çalışmaz.
+
+38 test geçti: önceki 29 kontrol, 6 kaynak yakalama/takip kontrolü,
+WM_ACTIVATE/scan code/tekrar/bırakma mesaj sırası, GUI takip kontrolü ve
+dinleyici kapanırken hata olsa bile alıcıları bırakma kontrolü. Windows
+API'leri testlerde sahte API ile temsil edildi; gerçek oyun uyumluluğu
+doğrulanmadı. Oyunun mesajları kabul edip etmediği kullanıcı makinesinde
+ayrıca denenmelidir.
 
 Yerel tanılama güncellemesi: alttaki **Son oturum** satırı yakalanan ve
 yönlendirilen olay sayısını, ana pencere odağının görülüp görülmediğini ve

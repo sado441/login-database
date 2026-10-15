@@ -2,6 +2,7 @@ import tkinter as tk
 import time
 import unittest
 import gc
+from unittest.mock import Mock
 from local_gui import LocalApp
 
 
@@ -59,6 +60,32 @@ class LocalGuiTests(unittest.TestCase):
         self.assertIn('Son olay: VK 87 bas', self.app.diagnostics.get())
         self.app.close_demo()
         self.assertEqual(self.app.demo_windows, [])
+
+    def test_sege_follow_left_click_starts_w_right_click_releases_both(self):
+        self.app.follow_var.set(True)
+        self.app.start_demo()
+        canvas = self.app.demo_source
+        self.pump(lambda: self.root.focus_get() == canvas)
+        canvas.event_generate('<ButtonPress-1>', x=50, y=60)
+        self.pump(lambda: all(87 in sink.keys for sink in self.app.demo_outputs))
+        canvas.event_generate('<ButtonRelease-1>', x=50, y=60)
+        canvas.event_generate('<ButtonPress-3>', x=50, y=60)
+        self.pump(lambda: all(not sink.keys for sink in self.app.demo_outputs))
+        self.assertFalse(self.app.follow.following)
+        self.app.stop()
+
+    def test_listener_stop_error_still_releases_both_receivers(self):
+        self.app.start_demo()
+        canvas = self.app.demo_source
+        self.pump(lambda: self.root.focus_get() == canvas)
+        canvas.event_generate('<KeyPress-w>')
+        self.pump(lambda: all(87 in sink.keys for sink in self.app.demo_outputs))
+        self.app.capture = Mock()
+        self.app.capture.stop.side_effect = RuntimeError('hook failed')
+        self.app.stop()
+        self.assertTrue(all(not sink.keys for sink in self.app.demo_outputs))
+        self.assertIn('hook failed', self.app.status.get())
+        self.assertIsNone(self.app.capture)
 
 
 if __name__ == '__main__':

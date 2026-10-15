@@ -77,7 +77,7 @@ class Output:
 
 
 class Capture:
-    def __init__(self, target, emit, emergency, rect_provider=None):
+    def __init__(self, target, emit, emergency, rect_provider=None, capture_keyboard=True):
         from pynput import keyboard, mouse
         import time
         self.target, self.emit = target, emit
@@ -137,10 +137,11 @@ class Capture:
 
         self.kb = keyboard.Listener(on_press=lambda k: on_key(k, True),
                                     on_release=lambda k: on_key(k, False),
-                                    win32_event_filter=lambda msg, data: not (data.flags & 0x10))
+                                    win32_event_filter=lambda msg, data: not (data.flags & 0x10)) if capture_keyboard else None
         self.mouse = mouse.Listener(on_move=move, on_click=click, on_scroll=scroll,
                                     win32_event_filter=lambda msg, data: not (data.flags & 0x01))
-        self.kb.start()
+        if self.kb:
+            self.kb.start()
         self.mouse.start()
 
     def reset(self):
@@ -148,6 +149,7 @@ class Capture:
         self.buttons.clear()
 
     def stop(self):
-        self.kb.stop()
+        if self.kb:
+            self.kb.stop()
         self.mouse.stop()
         self.reset()

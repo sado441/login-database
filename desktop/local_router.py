@@ -37,7 +37,12 @@ class LocalRouter:
         return False
 
     def route(self, event):
+        raw_scan = event.get('scan_code') if isinstance(event, dict) else None
         event = validate_event(event)
+        if raw_scan is not None:
+            if event['type'] != 'key' or type(raw_scan) is not int or not 0 < (raw_scan & 0xff) or raw_scan >> 8 not in (0, 0xe0, 0xe1):
+                raise ValueError('Geçersiz scan code.')
+            event['scan_code'] = raw_scan
         if not self.poll():
             return False
         try:

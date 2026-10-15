@@ -8,6 +8,20 @@ Windows paketi: [SADO-Link.zip](SADO-Link.zip). ZIP'i tamamen çıkarıp arkada�
 İnternet bağlantısı için `PROGRAM_BASLAT.bat` kullanılır. Paket içindeki
 `OKU_BENI.md` ayrıntılı istemci yönergesidir.
 
+## SEGE kaynağı esas alınan yerel mod (sürüm 4)
+
+İlk verilen SEGE-MACRO kaynağındaki multi/background girdi yolları incelendi.
+Yerel moda **SEGE uyumlu klavye** eklendi: keyboard.hook ile ham scan code,
+tekrarlanan key-down ve her tuştan önce WM_ACTIVATE bildirimi. Seçenek ilk
+oyun denemesinde varsayılan olarak açıktır. Kaynaktaki sol/sağ tıkla W/X
+takip davranışı da ayrı, isteğe bağlı seçenek olarak bulunur.
+
+[Kaynak karşılaştırması](desktop/SOURCE_COMPARISON_TR.md) ve upstream lisans
+bildirimleri istemci kaynaklarında ve ZIP içinde yer alır. 38 istemci testi
+geçti; gerçek Windows oyun uyumluluğu henüz doğrulanmadı. İlk denemede fare
+seçeneklerini kapatıp tek beceri tuşunu dene; Son oturum tanılaması durduktan
+sonra da kalır. Güncel yerel pencerenin başlığında **v4** görünür.
+
 ## Interception alıcı desteği (sürüm 3)
 
 Güncel ZIP'te internet alıcısı için **Interception** çıktı yöntemi vardır.
@@ -22,7 +36,7 @@ yeniden başlatılır. Ardından `PROGRAM_BASLAT.bat` → receiver → CİHAZLAR
 ile bağlı cihazlar kontrol edilir. Göndericiye sürücü kurmak gerekmez.
 Tüm adımlar ve lisans bağlantısı paket içindeki `OKU_BENI.md` dosyasında.
 
-29 istemci testi geçti; gerçek Windows sürücüsü ve oyun uyumluluğu Linux'ta
+Interception entegrasyon testleri geçti; gerçek Windows sürücüsü ve oyun uyumluluğu Linux'ta
 doğrulanamadı. Yerel çoklu pencere modu PostMessage kullanır; Interception
 yalnız internet üzerinden gelen girdiyi alıcıya uygulayan yönteme eklendi.
 

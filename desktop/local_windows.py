@@ -102,11 +102,13 @@ def packed_point(x, y):
 class BackgroundOutput:
     BUTTONS = {"left": (0x201, 0x202, 1), "right": (0x204, 0x205, 2), "middle": (0x207, 0x208, 0x10)}
 
-    def __init__(self, window):
+    def __init__(self, window, sege_compatible=False):
         self.window = window
         self.user = api()
         self.keys, self.buttons = set(), set()
         self.point = (0, 0)
+        self.sege_compatible = sege_compatible
+        self.scans = {}
 
     def post(self, message, wp, lp, cleanup=False):
         if not valid(self.window, cleanup=cleanup):
@@ -115,10 +117,16 @@ class BackgroundOutput:
         if not self.user.PostMessageW(self.window.hwnd, message, wp, lp):
             raise ctypes.WinError(ctypes.get_last_error())
 
-    def key(self, vk, down):
-        # Never change focus or impersonate WM_ACTIVATE in a background window.
-        scan = self.user.MapVirtualKeyW(vk, 4)
-        self.post(0x100 if down else 0x101, vk, key_lparam(vk, down, scan), cleanup=not down)
+    def key(self, vk, down, scan=None, repeat=False):
+        scan = scan if scan is not None else self.user.MapVirtualKeyW(vk, 4)
+        if getattr(self, 'sege_compatible', False):
+            # Matches SEGE multi.py: WM_ACTIVATE / WA_ACTIVE before each key.
+            # This is an application message, not SetForegroundWindow.
+            self.post(0x006, 1, 0, cleanup=not down)
+        lp = key_lparam(vk, down, scan)
+        if down and repeat:
+            lp |= 1 << 30
+        self.post(0x100 if down else 0x101, vk, lp, cleanup=not down)
 
     def flags(self):
         flags = sum(self.BUTTONS[name][2] for name in self.buttons)
@@ -131,12 +139,21 @@ class BackgroundOutput:
     def apply(self, event):
         if event["type"] == "key":
             vk, down = event["vk"], event["down"]
-            if down and vk not in self.keys:
+            scans = getattr(self, 'scans', None)
+            if scans is None:
+                self.scans = scans = {}
+            scan = scans.get(vk, event.get('scan_code'))
+            if scan is None:
+                scan = self.user.MapVirtualKeyW(vk, 4)
+            repeated = vk in self.keys
+            if down and (not repeated or getattr(self, 'sege_compatible', False)):
                 self.keys.add(vk)
-                self.key(vk, True)
+                scans[vk] = scan
+                self.key(vk, True, scan, repeat=repeated)
             elif not down and vk in self.keys:
-                self.key(vk, False)
+                self.key(vk, False, scan)
                 self.keys.discard(vk)
+                scans.pop(vk, None)
             return
         geometry = rect(self.window)
         if not geometry:
@@ -164,8 +181,9 @@ class BackgroundOutput:
         errors = []
         for vk in list(self.keys):
             try:
-                self.key(vk, False)
+                self.key(vk, False, getattr(self, 'scans', {}).get(vk))
                 self.keys.discard(vk)
+                getattr(self, 'scans', {}).pop(vk, None)
             except Exception as exc:
                 errors.append(str(exc))
         for name in list(self.buttons):

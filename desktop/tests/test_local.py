@@ -112,6 +112,21 @@ class MessageTests(unittest.TestCase):
         self.assertEqual(messages, [0x100, 0x201, 0x101, 0x202])
         self.assertTrue(sink.post.call_args_list[-1].kwargs['cleanup'])
 
+    def test_sege_activation_raw_scan_repeat_and_cleanup_order(self):
+        sink = self.sink()
+        sink.sege_compatible = True
+        event = dict(type='key', vk=87, down=True, scan_code=0x11)
+        sink.apply(event)
+        sink.apply(event)
+        sink.release_all()
+        calls = sink.post.call_args_list
+        self.assertEqual([c.args[0] for c in calls], [0x006, 0x100, 0x006, 0x100, 0x006, 0x101])
+        self.assertEqual(calls[0].args, (0x006, 1, 0))
+        self.assertEqual(calls[1].args[2], 1 | (0x11 << 16))
+        self.assertEqual(calls[3].args[2], 1 | (0x11 << 16) | (1 << 30))
+        self.assertEqual(calls[5].args[2], 1 | (0x11 << 16) | (3 << 30))
+        self.assertFalse(sink.keys or sink.scans)
+
 
 class CaptureTests(unittest.TestCase):
     def test_exact_window_provider_focus_gate_and_emergency(self):
