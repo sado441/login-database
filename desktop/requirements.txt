@@ -1,0 +1,2 @@
+websockets==15.0.1
+pynput==1.8.1; sys_platform == "win32"

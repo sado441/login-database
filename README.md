@@ -1,11 +1,26 @@
 # SADO Link
 
-İki Windows bilgisayarı arasında onaylı tuş/fare aktarımı için ilk deneme sürümü.
+İki Windows bilgisayarı arasında tuş/fare aktarımı ve aynı bilgisayarda
+bir ana pencereden diğer iki pencereye yerel aktarım prototipi.
 
 Windows paketi: [SADO-Link.zip](SADO-Link.zip). ZIP'i tamamen çıkarıp arkadaşın
 çevrimdışıyken `TEST_BASLAT.bat` ile iki pencereli yerel deneme yapabilirsin.
 İnternet bağlantısı için `PROGRAM_BASLAT.bat` kullanılır. Paket içindeki
 `OKU_BENI.md` ayrıntılı istemci yönergesidir.
+
+## Aynı bilgisayarda üç client (sürüm 2)
+
+Güncel ZIP'i yeni bir klasöre çıkarıp `YEREL_COKLU_BASLAT.bat` aç.
+Önce `3 PENCERELİ TEST` ile bir ana pencereden iki alıcıya olay
+yönlendirmesini dene. Ardından üç oyun penceresini aç; ana pencereyi ve
+diğer iki alıcıyı listeden seç. Aynı başlıklı pencereleri, üç saniye içinde
+ilgili pencereye geçerek seçen düğmeler de var. Yerel aktarım için sunucuya
+bağlanmak gerekmez. F12 durdurur.
+
+Bu özellik PostMessage kullanır; oyunun arka plandaki girdiyi kabul etmesi
+Windows üzerinde ayrıca doğrulanmalıdır. Üç test penceresinin çalışması
+oyun uyumluluğu anlamına gelmez. İstemci kaynakları `desktop/` altında;
+sunucu dağıtım dosyaları depo kökündedir.
 
 ## Render ile sunucu kurma
 
