@@ -1,4 +1,61 @@
-# SADO Link — sürüm 2: internet ve yerel çoklu pencere
+# SADO Link — sürüm 3: Interception alıcı desteği
+
+## Arkadaşının bilgisayarına Interception ile tuş/fare gönderme
+
+1. İkiniz de güncel ZIP'i ayrı, yeni bir klasöre çıkarın.
+2. **Alıcı olacak bilgisayarda** `INTERCEPTION_HAZIRLA.bat` açın. Resmi
+   GitHub Interception 1.0.1 arşivi HTTPS ile indirilir ve SHA-256 kontrolü
+   yapılır. DLL'ler ve resmi kurucu `drivers/Interception-1.0.1/` içine
+   hazırlanır. Bu adım sürücüyü kurmaz ve bilgisayarı yeniden başlatmaz.
+3. Interception sürücüsü zaten kurulu değilse aynı bilgisayarda
+   `INTERCEPTION_SURUCU_KUR.bat` açın. Windows yönetici onayı ister;
+   resmi kurucu `/install` ile çalışır. Kurulumdan sonra **Windows'u yeniden
+   başlatın**. Betik kurucunun SHA-256 değerini çalıştırmadan önce tekrar
+   doğrular. Kurulum başarısızsa konsoldaki hatayı paylaşın.
+4. İkiniz de `PROGRAM_BASLAT.bat` açın. Varsayılan sunucu artık
+   `wss://sado-link.onrender.com`. Sen sender, arkadaşın receiver seçsin;
+   aynı oturum kodunu girin.
+5. Arkadaşın bağlantı kurmadan önce **Alıcı girdi yöntemi = Interception**
+   seçili bıraksın. **CİHAZLARI BUL** düğmesine bassın. Listede klavye ve
+   fare varsa kurulum hazırdır; zaten kurulu sürücüyü yeniden kurmak gerekmez.
+6. Klavye/fare için `Otomatik` ilk bağlı cihazı seçer. Birden fazla bağlı
+   cihaz varsa listeden açık bir kimlik seçilebilir. Kimlikler resmi C API'ye
+   göre klavye **1–10**, fare **11–20** aralığındadır. Cihaz bilgileri
+   sunucuya gönderilmez.
+7. İkiniz de GERÇEK GİRDİ'yi açıp bağlanın. Arkadaşının logunda
+   **Alıcı Interception kullanıyor | Klavye … | Fare …** görünmeli.
+8. Önce arkadaşın aktarımı etkinleştirip oyun penceresine geçsin; sonra
+   sen gönderimi açıp kendi oyununa geç. Önce tek bir beceri tuşu dene.
+   Tuş/fare olayları alıcıda Interception üzerinden uygulanır. **F12 durdurur.**
+
+Gönderici fiziksel girdileri pynput ile yakalar; sadece gönderici olacak
+bilgisayara Interception sürücüsü kurmak gerekmez. Standart Windows girdisi
+seçeneği ayrıca durur. Interception seçildiğinde hata olursa standart yönteme
+sessizce geçilmez; bağlantı başlatılmaz veya aktarım durdurulup hata gösterilir.
+Sürücüyü kaldırmak gerekirse resmi kurucu yönetici olarak `/uninstall`
+parametresiyle çalıştırılabilir; ardından Windows yeniden başlatılır.
+
+Bu özellik **iki bilgisayar arasındaki internet alıcısına** eklendi.
+Yerel çoklu pencere modu ayrı olarak PostMessage kullanmaya devam eder;
+Interception fiziksel girdiyi belirli bir arka plan HWND'sine yönlendirmez.
+Sanal ekranın tamamına göre mutlak fare koordinatları kullanılır; kamera
+hareketleri veya oyun uyumluluğu garanti edilmez. Pause/Break aktarılmaz.
+
+Interception kütüphanesi resmi C API ile çağrılır; uygulama klavye/fare
+filtrelerini değiştirmez. DLL dosyalarının hash'i yüklenmeden önce doğrulanır.
+Kaynak/lisans: https://github.com/oblitum/Interception (upstream LGPL ve diğer
+lisans koşulları). Üçüncü taraf DLL/kurucu bu ZIP'e eklenmez; hazırlama
+betiği doğrudan resmi sürümden indirir ve upstream lisansını yanında saklar.
+
+Sürüm 3 doğrulaması: önceki 19 teste ek olarak 9 Interception testinde
+C struct boyutları, scan code/E0, cihaz sınırları, sanal masaüstü konumu,
+tuş/fare/tekerlek paketleri ve hata halinde bırakma/kapatma kontrol edildi.
+Ek bir GUI testi alıcının Interception çıkışını seçip olayları bu çıkışa
+aktarmasını ve bağlantı kapanınca kaynağı kapatmasını doğruladı: **29 test**.
+Native DLL/driver çağrıları testlerde sahte C API ile temsil edildi. Resmi
+arşivin hazırlanması, DLL/kurucu hash'leri ve tekrar çalıştırılabilirliği
+gerçek resmi arşivle ayrıca doğrulandı. Windows 11 sürücüsü ve oyun içi
+sonuç bu Linux ortamında test edilmedi.
 
 ## Yeni: aynı bilgisayarda üç oyun penceresi
 
@@ -116,9 +173,10 @@ penceresine uyarlanır. İkinizde aynı oyun arayüzü, kamera ve beceri düzeni
 olması gerekir. Aynı tıklama farklı karakter/hedef konumlarında farklı sonuç
 verebilir. İnternet gecikmesi vardır; tam eşzamanlılık garantisi yoktur.
 
-Gerçek girdi, pynput/Windows girdisi kullanır. Interception sürücüsü içermez.
-Oyunun bu girdileri kabul etmesi Windows üzerinde ayrıca denenmelidir; kernel
-sürücüsü veya oyun korumasını aşmaya yönelik bir uygulama bulunmaz.
+Gerçek girdide alıcı yöntemi Interception veya Standart Windows seçilebilir.
+Interception kurulumu yukarıdadır. Oyunun seçilen girdiyi kabul etmesi
+Windows üzerinde ayrıca denenmelidir. Sürücü kurulumu veya yerel testin
+geçmesi tek başına oyun uyumluluğunu doğrulamaz.
 
 ## Sunucu yöneticisi için
 

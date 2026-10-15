@@ -6,6 +6,7 @@ from types import SimpleNamespace
 import tkinter as tk
 import unittest
 import gc
+from unittest.mock import Mock, patch
 from app import App
 from relay import make_server
 
@@ -73,6 +74,33 @@ class GuiTests(unittest.TestCase):
         self.sender.toggle()
         self.sender.disconnect()
         self.pump(lambda: not self.receiver.paired and not self.receiver.consent)
+
+    def test_live_receiver_selects_interception_and_closes_it(self):
+        output = Mock(keyboard_id=1, mouse_id=11)
+        self.sender.connect()
+        self.receiver.live_var.set(True)
+        listener = Mock()
+        pynput = SimpleNamespace(keyboard=SimpleNamespace(Listener=lambda **kwargs: listener))
+        with patch('app.sys', SimpleNamespace(platform='win32')), \
+                patch.dict('sys.modules', {'pynput': pynput}), \
+                patch('app.messagebox.askyesno', return_value=True), \
+                patch('interception_output.InterceptionOutput', return_value=output) as factory:
+            self.receiver.connect()
+        factory.assert_called_once_with('Otomatik', 'Otomatik')
+        with patch('windows_input.target_rect', return_value=(0, 0, 1000, 500)):
+            self.pump(lambda: self.sender.paired and self.receiver.paired)
+            self.receiver.toggle()
+            self.pump(lambda: self.sender.armed and self.receiver.armed)
+            self.sender.toggle()
+            self.sender.canvas.focus_force()
+            self.sender_root.update()
+            self.sender.canvas.event_generate('<KeyPress-w>')
+            self.pump(lambda: output.apply.called)
+            output.apply.assert_called_with(dict(type='key', vk=87, down=True), (0, 0, 1000, 500))
+            self.receiver.disconnect()
+        self.assertTrue(output.release_all.called)
+        output.close.assert_called_once()
+        listener.stop.assert_called_once()
 
 
 if __name__ == "__main__":

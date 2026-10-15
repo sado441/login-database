@@ -8,6 +8,24 @@ Windows paketi: [SADO-Link.zip](SADO-Link.zip). ZIP'i tamamen çıkarıp arkada�
 İnternet bağlantısı için `PROGRAM_BASLAT.bat` kullanılır. Paket içindeki
 `OKU_BENI.md` ayrıntılı istemci yönergesidir.
 
+## Interception alıcı desteği (sürüm 3)
+
+Güncel ZIP'te internet alıcısı için **Interception** çıktı yöntemi vardır.
+Klavye ve fare hareketi/tıklama/tekerlek olayları resmi Interception C API
+üzerinden gönderilir. Varsayılan alıcı yöntemi Interception'dır; sürücü
+yoksa hata gösterilir, standart yönteme sessiz geçiş yapılmaz.
+
+Alıcı bilgisayarda önce `INTERCEPTION_HAZIRLA.bat` çalıştırılır. Resmi
+upstream arşivi ve DLL'ler SHA-256 ile doğrulanır. Sürücü kurulu değilse
+`INTERCEPTION_SURUCU_KUR.bat` yönetici onayıyla çalıştırılır ve Windows
+yeniden başlatılır. Ardından `PROGRAM_BASLAT.bat` → receiver → CİHAZLARI BUL
+ile bağlı cihazlar kontrol edilir. Göndericiye sürücü kurmak gerekmez.
+Tüm adımlar ve lisans bağlantısı paket içindeki `OKU_BENI.md` dosyasında.
+
+29 istemci testi geçti; gerçek Windows sürücüsü ve oyun uyumluluğu Linux'ta
+doğrulanamadı. Yerel çoklu pencere modu PostMessage kullanır; Interception
+yalnız internet üzerinden gelen girdiyi alıcıya uygulayan yönteme eklendi.
+
 ## Aynı bilgisayarda üç client (sürüm 2)
 
 Güncel ZIP'i yeni bir klasöre çıkarıp `YEREL_COKLU_BASLAT.bat` aç.

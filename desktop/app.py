@@ -39,6 +39,7 @@ class App:
         self.generation = 0
         self.paired = self.armed = self.active = self.consent = False
         self.live = False
+        self.session_backend = "Interception"
         self.seen_target = False
         self.target = ""
         self.pressed = set()
@@ -49,11 +50,14 @@ class App:
         self.url = tk.StringVar(value=args.url)
         self.code = tk.StringVar(value=args.code or secrets.token_urlsafe(24))
         self.live_var = tk.BooleanVar(value=False)
+        self.backend_var = tk.StringVar(value="Interception")
+        self.keyboard_id = tk.StringVar(value="Otomatik")
+        self.mouse_id = tk.StringVar(value="Otomatik")
         self.target_var = tk.StringVar(value="Knight")
         self.status = tk.StringVar(value="Bağlı değil — test modu; sisteme girdi gönderilmez.")
         self.info = tk.StringVar(value="Bekleniyor. F12 veya DURDUR ile aktarımı kes.")
         root.title("SADO Link | " + ("GÖNDERİCİ" if args.role == "sender" else "ALICI"))
-        root.geometry("700x720")
+        root.geometry("850x850")
         root.configure(bg="#101923")
         style = ttk.Style()
         style.theme_use("clam")
@@ -77,6 +81,20 @@ class App:
         self.live_check.pack(anchor="w", pady=6)
         if args.test_only:
             self.live_check.configure(state="disabled")
+        driver = ttk.Frame(frame)
+        driver.pack(fill="x", pady=4)
+        ttk.Label(driver, text="Alıcı girdi yöntemi:").pack(side="left")
+        self.backend_box = ttk.Combobox(driver, textvariable=self.backend_var, state="readonly", values=["Interception", "Standart Windows"], width=19)
+        self.backend_box.pack(side="left", padx=5)
+        self.find_devices = ttk.Button(driver, text="CİHAZLARI BUL", command=self.detect_devices)
+        self.find_devices.pack(side="left", padx=4)
+        ttk.Label(driver, text="Klavye:").pack(side="left")
+        self.kb_box = ttk.Combobox(driver, textvariable=self.keyboard_id, state="readonly", values=["Otomatik"], width=9)
+        self.kb_box.pack(side="left", padx=3)
+        ttk.Label(driver, text="Fare:").pack(side="left")
+        self.ms_box = ttk.Combobox(driver, textvariable=self.mouse_id, state="readonly", values=["Otomatik"], width=9)
+        self.ms_box.pack(side="left", padx=3)
+        ttk.Label(frame, text="Interception yalnız gerçek girdiyi uygulayan alıcıda gerekir. Gönderici fiziksel girdileri dinler.", wraplength=800).pack(anchor="w")
         ttk.Label(frame, text="Fare konumu oyun penceresine orantılanır. Aynı arayüz / beceri düzenini kullanın.", wraplength=650).pack(anchor="w")
         actions = ttk.Frame(frame)
         actions.pack(fill="x", pady=10)
@@ -120,6 +138,35 @@ class App:
         self.disconnect()
         subprocess.Popen([sys.executable, str(Path(__file__).resolve()), "--local"])
 
+    def detect_devices(self):
+        if self.connection:
+            messagebox.showinfo("Cihaz seçimi", "Önce bağlantıyı kes.")
+            return
+        native = None
+        try:
+            from interception_output import Native
+            native = Native()
+            devices = native.devices()
+            keyboards = [str(d) for d in devices if 1 <= d <= 10]
+            mice = [str(d) for d in devices if 11 <= d <= 20]
+            self.kb_box.configure(values=["Otomatik", *keyboards])
+            self.ms_box.configure(values=["Otomatik", *mice])
+            self.keyboard_id.set("Otomatik")
+            self.mouse_id.set("Otomatik")
+            self.log(f"Interception: klavye cihazları {keyboards}, fare cihazları {mice}. Otomatik ilk bağlı cihazı seçer.")
+            if not keyboards or not mice:
+                messagebox.showwarning("Cihaz bulunamadı", "Klavye ve fare birlikte bulunamadı. Sürücüyü ve yeniden başlatmayı kontrol et.")
+        except Exception as exc:
+            messagebox.showerror("Interception hazır değil", str(exc))
+        finally:
+            if native:
+                native.close()
+
+    def driver_controls(self, enabled):
+        for widget in (self.backend_box, self.kb_box, self.ms_box):
+            widget.configure(state="readonly" if enabled else "disabled")
+        self.find_devices.configure(state="normal" if enabled else "disabled")
+
     def enqueue(self, generation, message):
         try:
             self.incoming.put_nowait((generation, message))
@@ -143,14 +190,26 @@ class App:
                 self.emergency_hook = keyboard.Listener(on_press=lambda k: self.enqueue(self.generation, {"type": "emergency"}) if k == keyboard.Key.f12 else None)
                 self.emergency_hook.start()
                 if self.role.get() == "receiver":
-                    from windows_input import Output
-                    self.output = Output()
+                    self.session_backend = self.backend_var.get()
+                    if self.backend_var.get() == "Interception":
+                        from interception_output import InterceptionOutput
+                        self.output = InterceptionOutput(self.keyboard_id.get(), self.mouse_id.get())
+                        self.log(f"Alıcı Interception kullanıyor | Klavye {self.output.keyboard_id} | Fare {self.output.mouse_id}")
+                    else:
+                        from windows_input import Output
+                        self.output = Output()
+                        self.log("Alıcı Standart Windows girdisi kullanıyor.")
             generation = self.generation
             self.connection = Connection(self.url.get().strip(), self.code.get().strip(), self.role.get(),
                                          lambda m: self.enqueue(generation, m))
             self.session_role = self.role.get()
+            self.root.title("SADO Link | " + ("GÖNDERİCİ" if self.session_role == "sender" else "ALICI"))
+            self.canvas.delete("hint")
+            hint = ("GERÇEK GİRDİ · " + (self.session_backend if self.session_role == "receiver" else "FİZİKSEL GİRDİ YAKALAMA")) if self.live else "TEST MODU · Sisteme girdi uygulanmaz"
+            self.canvas.create_text(max(300, self.canvas.winfo_width()//2), 60, text=hint, fill="#bcdfef", font=("Segoe UI", 12), tags="hint", justify="center")
             self.role_box.configure(state="disabled")
             self.live_check.configure(state="disabled")
+            self.driver_controls(False)
             self.connection.thread.start()
             self.status.set("Bağlanıyor…")
         except Exception as exc:
@@ -216,11 +275,16 @@ class App:
         self.update_status()
 
     def release(self):
-        if self.output:
-            self.output.release_all()
+        error = None
+        try:
+            if self.output:
+                self.output.release_all()
+        except Exception as exc:
+            error = str(exc)
+            self.log("Girdi bırakma hatası: " + error)
         self.received_keys.clear()
         self.received_buttons.clear()
-        self.info.set("Tuşlar ve fare düğmeleri bırakıldı.")
+        self.info.set("Bırakma hatası: " + error if error else "Tuşlar ve fare düğmeleri bırakıldı.")
 
     def disconnect(self):
         self.stop()
@@ -233,16 +297,24 @@ class App:
         if self.emergency_hook:
             self.emergency_hook.stop()
             self.emergency_hook = None
+        if self.output and hasattr(self.output, "close"):
+            try:
+                self.output.close()
+            except Exception as exc:
+                self.log("Sürücü kapatma hatası: " + str(exc))
         self.output = None
         self.paired = self.armed = False
         self.role_box.configure(state="readonly")
         self.live_check.configure(state="disabled" if self.args.test_only else "normal")
+        self.driver_controls(True)
         self.status.set("Bağlı değil.")
 
     def update_status(self):
         if not self.connection:
             return
         mode = "GERÇEK GİRDİ" if self.live else "TEST"
+        if self.live and self.session_role == "receiver":
+            mode += " / " + self.session_backend
         self.status.set(f"{mode} | Eşleşme: {'var' if self.paired else 'bekleniyor'} | Alıcı onayı: {'açık' if self.armed else 'kapalı'} | Gönderim: {'açık' if self.active else 'kapalı'}")
 
     def receive_event(self, event):
@@ -392,13 +464,17 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--demo", action="store_true")
     parser.add_argument("--local", action="store_true", help="Same-PC multi-window forwarding")
+    parser.add_argument("--prepare-interception", action="store_true")
     parser.add_argument("--role", choices=["sender", "receiver"], default="sender")
-    parser.add_argument("--url", default="ws://127.0.0.1:8765")
+    parser.add_argument("--url", default="wss://sado-link.onrender.com")
     parser.add_argument("--code", default="")
     parser.add_argument("--auto", action="store_true")
     parser.add_argument("--test-only", action="store_true", help="Disable live injection for the offline demo")
     options = parser.parse_args()
-    if options.demo:
+    if options.prepare_interception:
+        from prepare_interception import main as prepare_driver
+        prepare_driver()
+    elif options.demo:
         demo()
     else:
         if sys.platform == "win32":
