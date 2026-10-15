@@ -8,6 +8,15 @@ Windows paketi: [SADO-Link.zip](SADO-Link.zip). ZIP'i tamamen çıkarıp arkada�
 İnternet bağlantısı için `PROGRAM_BASLAT.bat` kullanılır. Paket içindeki
 `OKU_BENI.md` ayrıntılı istemci yönergesidir.
 
+## İzole SEGE Arka Plan Testi (v4.1)
+
+Yerel modda iki alıcı seçildikten sonra **SEGE ARKA PLAN TESTİ** düğmesi,
+ayrı bir test penceresi açar. Bu test kaynak background.py ile aynı
+pywin32 MapVirtualKey/PostMessage sırasını ve 10 ms basışını kullanır.
+Fiziksel klavye yakalama ve ana pencere odağına bağlı olmadan 20 tur
+gönderim yapar. Sonuçlar ve hatalar görünür kalır; oyun uyumluluğunun
+doğrulandığı iddia edilmez. F12 iptal eder.
+
 ## SEGE kaynağı esas alınan yerel mod (sürüm 4)
 
 İlk verilen SEGE-MACRO kaynağındaki multi/background girdi yolları incelendi.

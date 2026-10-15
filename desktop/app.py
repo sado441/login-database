@@ -1,5 +1,6 @@
 """SADO Link: consent-based keyboard/mouse mirroring and offline demo."""
 import argparse
+import json
 import os
 from pathlib import Path
 import queue
@@ -464,6 +465,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--demo", action="store_true")
     parser.add_argument("--local", action="store_true", help="Same-PC multi-window forwarding")
+    parser.add_argument('--background-probe', action='store_true')
+    parser.add_argument('--probe-targets', default='[]')
     parser.add_argument("--prepare-interception", action="store_true")
     parser.add_argument("--role", choices=["sender", "receiver"], default="sender")
     parser.add_argument("--url", default="wss://sado-link.onrender.com")
@@ -484,7 +487,26 @@ if __name__ == "__main__":
             except Exception:
                 pass
         window = tk.Tk()
-        if options.local:
+        if options.background_probe:
+            try:
+                if sys.platform != 'win32':
+                    raise ValueError('Bu test gerçek Windows pencereleri gerektirir.')
+                from local_windows import Window
+                from background_probe import ProbeApp
+                data = json.loads(options.probe_targets)
+                if not isinstance(data, list) or not 1 <= len(data) <= 10:
+                    raise ValueError('Geçersiz hedef listesi.')
+                windows = []
+                for item in data:
+                    if type(item.get('hwnd')) is not int or item['hwnd'] <= 0 or type(item.get('pid')) is not int or item['pid'] <= 0:
+                        raise ValueError('Geçersiz pencere kimliği.')
+                    windows.append(Window(item['hwnd'], item['pid'], str(item.get('title', ''))[:512]))
+                app = ProbeApp(window, windows)
+            except Exception as exc:
+                messagebox.showerror('SEGE Arka Plan Testi', str(exc))
+                window.destroy()
+                sys.exit(1)
+        elif options.local:
             from local_gui import LocalApp
             app = LocalApp(window)
         else:

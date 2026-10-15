@@ -3,6 +3,9 @@ import queue
 import sys
 import threading
 import time
+import subprocess
+import json
+from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox
 from local_router import LocalRouter
@@ -57,7 +60,7 @@ class LocalApp:
         self.filter_var = tk.StringVar(value="Knight")
         self.status = tk.StringVar(value="Durduruldu. Ana pencereyi ve iki alıcıyı seç.")
         self.diagnostics = tk.StringVar(value="Son oturum: henüz girdi yok.")
-        root.title("SADO Link v4 | YEREL ÇOKLU PENCERE")
+        root.title("SADO Link v4.1 | YEREL ÇOKLU PENCERE")
         root.geometry("960x850")
         frame = ttk.Frame(root, padding=16)
         frame.pack(fill="both", expand=True)
@@ -84,6 +87,7 @@ class LocalApp:
         actions.pack(fill="x", pady=8)
         ttk.Button(actions, text="YEREL AKTARIMI BAŞLAT", command=self.start_live).pack(side="left", padx=3)
         ttk.Button(actions, text="DURDUR (F12)", command=self.stop).pack(side="left", padx=3)
+        ttk.Button(actions, text="SEGE ARKA PLAN TESTİ", command=self.open_background_probe).pack(side="left", padx=3)
         ttk.Button(actions, text="3 PENCERELİ TEST", command=self.start_demo).pack(side="right", padx=3)
         ttk.Label(frame, textvariable=self.status, wraplength=820, font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=8)
         ttk.Label(frame, textvariable=self.diagnostics, wraplength=820).pack(anchor="w", pady=4)
@@ -111,6 +115,21 @@ class LocalApp:
             self.status.set(f"{len(self.windows)} pencere bulundu. Aynı başlıklar PID / HWND ile ayrılır.")
         except Exception as exc:
             messagebox.showerror("Pencere listesi alınamadı", str(exc))
+
+    def open_background_probe(self):
+        self.stop()
+        try:
+            targets = [self.windows[i] for i in self.targets.curselection()]
+            if not targets:
+                raise ValueError('Önce alıcı listesinden iki hedefi seç.')
+            if self.source.current() >= 0 and self.windows[self.source.current()] in targets:
+                raise ValueError('Ana pencere alıcılar arasında olmamalı.')
+            if not messagebox.askyesno('SEGE Arka Plan Testi', 'Seçili alıcılara fiziksel tuşa basmadan kısa W/1/2/R basışları gönderen ayrı test açılacak. Devam edilsin mi?'):
+                return
+            data = json.dumps([dict(hwnd=w.hwnd, pid=w.pid, title=w.title) for w in targets])
+            subprocess.Popen([sys.executable, str(Path(__file__).resolve().parent/'app.py'), '--background-probe', '--probe-targets', data])
+        except Exception as exc:
+            messagebox.showerror('Test açılamadı', str(exc))
 
     def start_live(self):
         self.stop()

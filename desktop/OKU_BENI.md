@@ -1,4 +1,31 @@
-# SADO Link — sürüm 4: SEGE kaynağına dayalı yerel girdi
+# SADO Link — sürüm 4.1: SEGE arka plan gönderimini izole test etme
+
+## Yeni: fiziksel klavye olmadan SEGE Arka Plan Testi
+
+Yerel modda ana pencereyi ve iki alıcıyı seç. Normal aktarımı başlatmadan
+**SEGE ARKA PLAN TESTİ** düğmesine bas. Açılan ayrı test penceresinde
+W seçili kalsın ve **3 SANİYE SONRA TESTİ BAŞLAT** düğmesine bas.
+Tuşa kendin basma; alıcı karakterleri izle. Test 20 tur, iki alıcıya toplam
+40 bas/bırak çifti üretir. Test bittiğinde Aktivasyon/Bas/Bırak sayaçlarını
+ve hata varsa mesajını paylaş. Bu sayaçlar oyunun işlediğini kanıtlamaz.
+
+Bu yol kaynak `background.py` gibi **win32api.MapVirtualKey(scan, 1)** ve
+**win32api.PostMessage** kullanır. Sıra WM_ACTIVATE → KEYDOWN → 10 ms → KEYUP.
+Fiziksel klavye hook'u, mirroring router'ı ve ana pencere odak kontrolü
+testin gönderim yolunda kullanılmaz. Hedef PID/HWND doğrulaması korunur.
+F12 iptal eder ve devam eden basış bırakılır. Ayrı test penceresini kapatıp
+normal yerel moda dönülebilir.
+
+Bu bir tanılama adımıdır: çalışırsa zamanlanmış basışla fiziksel aktarım
+arasındaki fark daralır; çalışmazsa yalnız gönderim sayacından oyunun
+arka plan mesajlarını işlediği sonucu çıkarılamaz. Windows'taki gerçek
+sonuç ayrıca gözlenmelidir. Yeni pywin32 bağımlılığı başlatıcı tarafından
+kurulur. Aynı anda normal aktarımı açık bırakma; test düğmesi onu durdurur.
+
+Bu eklemeyle 43 otomatik test geçti. Yeni testler aynı pywin32 çağrı
+sırasını, 10 ms bekleme isteğini, iptal/hata sonrasında bırakmayı ve iki
+alıcıya 20 tur üretimi sahte Windows API ile doğrular. Gerçek pywin32
+çağrısı ve oyun davranışı bu Linux ortamında yürütülmedi.
 
 ## Kaynağı esas alan yerel mod güncellemesi
 
