@@ -297,6 +297,10 @@ kullanıcı denemesi için yukarıdaki yerel TEST modunu kullan.
 
 - Python bulunamazsa Python 3.10+ kurulumunu kontrol et. `.bat` önce `py -3`,
   sonra `python` komutunu dener. Hata olursa konsol açık kalır.
+- `No module named pip` hatasında güncel başlatıcı `ensurepip --upgrade`
+  ile sanal ortamın pip kurulumunu otomatik tamamlar. Eski başlatıcıda aynı
+  işlem klasörün içinden `.venv\Scripts\python.exe -m ensurepip --upgrade`
+  komutuyla yapılabilir. Sanal ortamı veya ayarları silmek gerekmez.
 - Pencereler açılmıyorsa konsoldaki tam hata mesajını paylaş.
 - Alıcıda olay yoksa ikisinin de eşleştiğini, alıcı onayını ve gönderim
   durumunu kontrol et. Testte tuşları yalnız yeşil alan odaktayken dene.
