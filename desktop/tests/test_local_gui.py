@@ -42,6 +42,8 @@ class LocalGuiTests(unittest.TestCase):
         canvas.event_generate('<KeyPress-F12>')
         self.pump(lambda: not self.app.router.running)
         self.assertTrue(all(not sink.keys and not sink.buttons for sink in self.app.demo_outputs))
+        self.assertIn('Yönlendirilen: 3', self.app.diagnostics.get())
+        self.assertIn('Ana odak görüldü: evet', self.app.diagnostics.get())
 
     def test_focus_loss_and_closed_demo_release_both_receivers(self):
         self.app.start_demo()
@@ -52,6 +54,9 @@ class LocalGuiTests(unittest.TestCase):
         self.root.focus_force()
         self.pump(lambda: not self.app.router.running)
         self.assertTrue(all(not sink.keys for sink in self.app.demo_outputs))
+        self.assertIn('Yakalanan: 1', self.app.diagnostics.get())
+        self.assertIn('Yönlendirilen: 1', self.app.diagnostics.get())
+        self.assertIn('Son olay: VK 87 bas', self.app.diagnostics.get())
         self.app.close_demo()
         self.assertEqual(self.app.demo_windows, [])
 

@@ -48,9 +48,11 @@ class LocalApp:
         self.last_move = 0
         self.selection_timer = None
         self.test_keys = set()
+        self.captured = 0
         self.mouse_var = tk.BooleanVar(value=True)
         self.filter_var = tk.StringVar(value="Knight")
         self.status = tk.StringVar(value="Durduruldu. Ana pencereyi ve iki alıcıyı seç.")
+        self.diagnostics = tk.StringVar(value="Son oturum: henüz girdi yok.")
         root.title("SADO Link | YEREL ÇOKLU PENCERE")
         root.geometry("920x780")
         frame = ttk.Frame(root, padding=16)
@@ -78,6 +80,7 @@ class LocalApp:
         ttk.Button(actions, text="DURDUR (F12)", command=self.stop).pack(side="left", padx=3)
         ttk.Button(actions, text="3 PENCERELİ TEST", command=self.start_demo).pack(side="right", padx=3)
         ttk.Label(frame, textvariable=self.status, wraplength=820, font=("Segoe UI", 10, "bold")).pack(anchor="w", pady=8)
+        ttk.Label(frame, textvariable=self.diagnostics, wraplength=820).pack(anchor="w", pady=4)
         ttk.Label(frame, text="Arka plan girdileri Windows pencere mesajlarıyla gönderilir. Oyunun bunları kabul etmesi ayrıca denenmelidir. Kamera / hedefleme iki karakterde aynı sonucu vermeyebilir.", wraplength=820).pack(anchor="w")
         root.bind_all("<F12>", lambda e: self.stop())
         root.protocol("WM_DELETE_WINDOW", self.close)
@@ -126,13 +129,17 @@ class LocalApp:
                 return
             self.router = LocalRouter(source, {w: BackgroundOutput(w) for w in targets}, lambda: foreground(source), valid)
             self.router.start()
+            self.captured = 0
             self.halt.clear()
             generation = self.generation
             self.forward_mouse = self.mouse_var.get()
 
             def emit(event):
+                if generation != self.generation:
+                    return
                 if event["type"] != "key" and not self.forward_mouse:
                     return
+                self.captured += 1
                 try:
                     self.events.put_nowait((generation, event))
                 except queue.Full:
@@ -198,6 +205,7 @@ class LocalApp:
                                   lambda: self.root.focus_get() == self.demo_source,
                                   lambda _: all(w.winfo_exists() and w.state() != "iconic" for w in self.demo_windows))
         self.router.start()
+        self.captured = 0
         self.halt.clear()
         source = self.demo_source
         source.bind("<ButtonPress-1>", lambda e: self.demo_button(e, "left", True))
@@ -216,7 +224,17 @@ class LocalApp:
 
     def demo_route(self, event):
         if self.demo_mode and self.router:
+            if self.router.running:
+                self.captured += 1
             self.router.route(event)
+
+    def update_diagnostics(self):
+        if self.router:
+            event = self.router.last_event
+            last = "yok"
+            if event:
+                last = f"VK {event['vk']} {'bas' if event['down'] else 'bırak'}" if event['type'] == 'key' else event['type']
+            self.diagnostics.set(f"Son oturum | Yakalanan: {self.captured} | Yönlendirilen: {self.router.total} | Alıcı: {len(self.router.outputs)} | Ana odak görüldü: {'evet' if self.router.seen_source else 'hayır'} | Son olay: {last}")
 
     def demo_key(self, event, down):
         from app import tk_vk
@@ -256,6 +274,7 @@ class LocalApp:
         if self.router:
             self.router.stop()
             self.status.set(self.router.reason)
+            self.update_diagnostics()
         self.test_keys.clear()
         while True:
             try:
@@ -303,6 +322,7 @@ class LocalApp:
         except Exception as exc:
             self.stop()
             self.status.set("Aktarım durduruldu: " + str(exc)[:180])
+        self.update_diagnostics()
         self.tick_timer = self.root.after(20, self.tick)
 
     def close(self):

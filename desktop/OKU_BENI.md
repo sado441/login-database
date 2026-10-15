@@ -1,5 +1,14 @@
 # SADO Link — sürüm 3: Interception alıcı desteği
 
+Yerel tanılama güncellemesi: alttaki **Son oturum** satırı yakalanan ve
+yönlendirilen olay sayısını, ana pencere odağının görülüp görülmediğini ve
+son yönlendirilen olayı gösterir. F12 veya programa dönme nedeniyle aktarım
+dursa da bu satır kalır. Bu sayılar oyunun girdiyi işlediğini kanıtlamaz.
+Yakalanan 0 ise ana pencere/tuş yakalama tarafı incelenir. Yönlendirilen
+artıyor ve karakterler tepki vermiyorsa hedef oyunun arka plan mesajlarını
+işlemesi ayrıca kontrol edilir. Hata varsa üstteki durum satırıyla birlikte
+bu satırı paylaş.
+
 ## Arkadaşının bilgisayarına Interception ile tuş/fare gönderme
 
 1. İkiniz de güncel ZIP'i ayrı, yeni bir klasöre çıkarın.

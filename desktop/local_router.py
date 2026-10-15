@@ -13,6 +13,7 @@ class LocalRouter:
         self.running = False
         self.seen_source = False
         self.total = 0
+        self.last_event = None
         self.reason = "Hazır"
 
     def start(self):
@@ -43,6 +44,7 @@ class LocalRouter:
             for output in self.outputs.values():
                 output.apply(event)
             self.total += 1
+            self.last_event = event.copy()
             return True
         except Exception:
             self.stop("Girdi gönderilemedi; aktarım durduruldu.")
